@@ -1,0 +1,4 @@
+int32 waypoint
+int32 time
+---
+string status

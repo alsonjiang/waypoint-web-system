@@ -1,0 +1,4 @@
+bool data
+---
+bool success
+waypoint_msgs/ID[] ID

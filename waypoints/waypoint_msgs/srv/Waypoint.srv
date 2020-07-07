@@ -1,0 +1,5 @@
+string name
+---
+bool success
+string message
+waypoint_msgs/ID ID
