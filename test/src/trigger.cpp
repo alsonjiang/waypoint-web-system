@@ -1,6 +1,5 @@
 #include <ros/ros.h>
 
-#include <waypoint_msgs/TotalWaypoint.h>
 #include <waypoint_msgs/WaypointSequence.h>
 
 ros::ServiceClient client;
