@@ -4,15 +4,15 @@
 #include <actionlib/client/simple_action_client.h>
 
 #include <waypoint_msgs/WaypointPauseTiming.h>
+#include <waypoint_msgs/PathTaskArray.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
-#include <nav_msgs/Path.h>
 #include <move_base_msgs/MoveBaseAction.h>
 
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
-nav_msgs::Path storeGoals;
+waypoint_msgs::PathTaskArray storeGoals;
 int amtOfGoals, currentGoal, pause_time[10], waypoint_num[10], pause_num=0;
 bool loop_enabled=false;
 
@@ -34,6 +34,18 @@ void bye(void)
 void sleep(void)
 {
 	ROS_INFO("SLEEP");
+}
+
+void task(void)
+{
+	if(storeGoals.poses[currentGoal-1].task == "hello")
+		hello();
+	else if(storeGoals.poses[currentGoal-1].task == "punch")
+		punch();
+	else if(storeGoals.poses[currentGoal-1].task == "bye")
+		bye();
+	else if(storeGoals.poses[currentGoal-1].task == "sleep")
+		sleep();
 }
 
 void reset_pause(int* arr){
@@ -89,13 +101,14 @@ void doneCb(const actionlib::SimpleClientGoalState& state, const move_base_msgs:
 
 void callback_goal_reset(const move_base_msgs::MoveBaseActionResult::ConstPtr msg, MoveBaseClient* ac){
 	if(msg->status.status == 3){
+		task();
 		if(currentGoal == amtOfGoals && loop_enabled){
 			ros::Duration(apply_pause()).sleep();
 			ROS_INFO("Looping waypoints");
 			ROS_INFO("Waypoint 1 has been executed.");
 			currentGoal = 1;
 			move_base_msgs::MoveBaseGoal goal_msg;
-			goal_msg.target_pose = storeGoals.poses[currentGoal-1];
+			goal_msg.target_pose.pose = storeGoals.poses[currentGoal-1].pose;
 			goal_msg.target_pose.header.frame_id = "map";
 			ac->sendGoal(goal_msg, &doneCb);
 		}
@@ -103,7 +116,7 @@ void callback_goal_reset(const move_base_msgs::MoveBaseActionResult::ConstPtr ms
 		{
 			ros::Duration(apply_pause()).sleep();
 			move_base_msgs::MoveBaseGoal goal_msg;
-			goal_msg.target_pose = storeGoals.poses[currentGoal];
+			goal_msg.target_pose.pose = storeGoals.poses[currentGoal].pose;
 			goal_msg.target_pose.header.frame_id = "map";
 			ac->sendGoal(goal_msg, &doneCb);
 			ROS_INFO("Waypoint %d has been executed.", (currentGoal+1));
@@ -115,12 +128,12 @@ void callback_goal_reset(const move_base_msgs::MoveBaseActionResult::ConstPtr ms
 	} 
 }
 
-void callback_data_path(const nav_msgs::Path::ConstPtr& msg, MoveBaseClient* ac){
+void callback_data_path(const waypoint_msgs::PathTaskArray::ConstPtr& msg, MoveBaseClient* ac){
 	currentGoal = 0;
 	move_base_msgs::MoveBaseGoal goal_msg;
 	storeGoals = *msg;
 	amtOfGoals = msg->poses.size();
-	goal_msg.target_pose = storeGoals.poses[currentGoal];
+	goal_msg.target_pose.pose = storeGoals.poses[currentGoal].pose;
 	goal_msg.target_pose.header.frame_id = "map";
 	ac->sendGoal(goal_msg, &doneCb);
 	currentGoal++;
@@ -133,7 +146,7 @@ int main (int argc, char **argv)
 	ros::NodeHandle nh;
 	MoveBaseClient ac("move_base", true);
 	//ac.waitForServer();
-	ros::Subscriber sub_waypoints = nh.subscribe<nav_msgs::Path>("/waypoints", 1000, boost::bind(callback_data_path, _1, &ac));
+	ros::Subscriber sub_waypoints = nh.subscribe<waypoint_msgs::PathTaskArray>("/waypoints", 1000, boost::bind(callback_data_path, _1, &ac));
 	ros::Subscriber waypoints_complete = nh.subscribe<move_base_msgs::MoveBaseActionResult>("/move_base/result", 1000, boost::bind(callback_goal_reset, _1, &ac));
 	ros::ServiceServer server_pause = nh.advertiseService("/pause_waypoint", pause_handle);
 	ros::ServiceServer server_pause_cancel = nh.advertiseService("/cancel_pause", cancel_pause_handle);
