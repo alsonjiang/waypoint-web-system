@@ -2,6 +2,7 @@
 
 import rospy
 import json
+import os
 from json import JSONDecoder
 from web_service_jeremy_v1.srv import NamePose
 from web_service_jeremy_v1.srv import Strings
@@ -13,6 +14,9 @@ from std_srvs.srv import SetBool
 
 class Avatar():
     def __init__(self):
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        dir_path = self.walk_up_folder(dir_path)
+        self.databaseDirectory = os.path.join(dir_path, 'waypoint_system/database', 'location.json')
         self.databaseDirectory = "/home/lee/catkin_ws/src/waypoints/waypoint_system/database/location.json"
         self.addWaypointService = rospy.Service("/web_service/add_location", NamePose, self.callback_addWaypoint)
         self.deleteWaypointService = rospy.Service("/web_service/delete_location", Strings, self.callback_deleteWaypoint)
@@ -110,6 +114,20 @@ class Avatar():
         f = open(self.databaseDirectory, "r+")
         json.dump(data, f, indent=4, sort_keys=True)
         f.close()
+        
+    def walk_up_folder(self, path, dir_goal='waypoints'):
+    ''' Searches and returns the directory of the waypoint.csv file ''' 
+
+        dir_path = os.path.dirname(path)
+        split_path = str.split(dir_path, '/')     
+        counter = 0  
+
+        while (split_path[-1] != dir_goal and counter < 20):
+            dir_path = os.path.dirname(dir_path)
+            split_path = str.split(dir_path, '/')
+            counter += 1
+    
+        return dir_path
 
 
 if __name__ == "__main__":
